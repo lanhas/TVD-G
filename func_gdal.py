@@ -10,7 +10,7 @@ def separate_data(path, sv_path=None):
     分离文件，将下载后的混合文件分离
     Parameters
     ----------
-    ori_path: Path
+    path: Path
         从91卫图下载的原始文件
     sv_path: Path
         待保存的目录
@@ -379,7 +379,9 @@ def coordinateTransform(data, stPoint, grad, mode='l2p'):
         # 将相对坐标转为经纬度坐标
         px = stPoint[0] + data[0] * grad[0]
         py = stPoint[1] + data[1] * grad[1]
-    return (px, py)
+    else:
+        raise ValueError('mode error!')
+    return [px, py]
 
 
 if __name__ == "__main__":

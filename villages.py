@@ -1,5 +1,5 @@
 from func_gdal import *
-from func_elements import *
+from utils import render_dem
 
 
 class Villages:
@@ -34,3 +34,19 @@ class Villages:
             name_list.append(fileName.stem[:-7])
         names = np.array(name_list)
         np.savetxt(str(self.sv_path / 'villages_info.csv'), names, fmt='%s')
+
+    def run(self):
+
+        # step1: 提取数据
+        self.separate()
+
+        # step2: 数据规整
+        self.clean()
+        self.crop()
+        self.locNorm()
+
+        # step3: 对DEM数据进行渲染
+        self.render_dem()
+
+        # step4: 生成标记文件
+        self.villages_info()

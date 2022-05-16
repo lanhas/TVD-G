@@ -4,13 +4,13 @@ from PIL import Image
 from labelme import utils
 
 
-def boundary_pruning(image, kernel_size, iter):
+def boundary_pruning(image, kernel_size, iter_num):
     """
     对图像进行开闭运算，去除细小的毛躁区域
     """
     kernel = np.ones((kernel_size, kernel_size), np.uint8)
-    image = cv2.morphologyEx(image, cv2.MORPH_OPEN, kernel, iterations=iter)
-    image = cv2.morphologyEx(image, cv2.MORPH_CLOSE, kernel, iterations=iter)
+    image = cv2.morphologyEx(image, cv2.MORPH_OPEN, kernel, iterations=iter_num)
+    image = cv2.morphologyEx(image, cv2.MORPH_CLOSE, kernel, iterations=iter_num)
     return image
 
 
@@ -134,48 +134,23 @@ def img_addition(image, areaMask, axisColor):
     return image
 
 
-def tif2bmp(img: Image)->Image:
-    """
-    将高程tif文件转为bmp文件，压缩方法：
-        255 * (currentNum - minNum)/(maxNum - minNum)
-    """
-    dem_array = np.array(img)
-    dem_min = dem_array.min()
-    dem_max = dem_array.max()
-    dem_array = 255 * np.divide(dem_array - dem_min, dem_max - dem_min)
-    dem_array = dem_array.astype(np.uint8)
-    result = Image.fromarray(dem_array)
-    return result
-
-
-def convert(ori_path, res_path):
+def convert(path, sv_path):
     """
     转换文件为统一格式
     """
-    for fileName in ori_path.iterdir():
+    for fileName in path.iterdir():
         print(fileName.name)
         image = np.array(Image.open(fileName).convert("1"))
         res = np.zeros_like(image, dtype=np.uint8)
-        res[image>0] = 1
-        utils.lblsave(res_path / (fileName.stem + '.png'), res)
+        res[image > 0] = 1
+        utils.lblsave(sv_path / (fileName.stem + '.png'), res)
 
 
-def render_dem(path, sv_path=None):
-    source_path = path / 'dem'
-    if sv_path is None:
-        sv_path = path / 'DEMImages'
-    sv_path.mkdir(exist_ok=True)
-    for fileName in source_path.iterdir():
-        image = tif2bmp(Image.open(fileName))
-        image.save(sv_path / (fileName.stem + '.jpg'))
-        print("Saved contourLine data {} in {}".format(fileName.stem, sv_path / (fileName.stem + '.jpg')))
-
-
-colorMask = {'urban_land': (0, 255, 255),
-             'agriculture_land': (255, 255, 0),
-             'rangeland': (255, 0, 255),
-             'forest_land': (0, 255, 0),
-             'water': (0, 0, 255),
-             'barren_land': (255, 255, 255),
+colorMask = {'urban_land': (0, 128, 128),
+             'agriculture_land': (128, 128, 0),
+             'rangeland': (128, 0, 128),
+             'forest_land': (0, 128, 0),
+             'water': (0, 0, 128),
+             'barren_land': (128, 0, 0),
              'unkonwn': (0, 0, 0),
             }
