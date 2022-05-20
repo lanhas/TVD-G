@@ -64,7 +64,7 @@ def json2dataset(json_path, result_path, classes):
             print("Saved " + str(fileName).split('.')[0] + ".png")
 
 
-def elements_split(path, elements_name, elements_num, sv_path):
+def elements_split(path, elements_name, elements_num, sv_path=None):
     """
     将mask中的地物要素进行提取，分别保存到指定目录
 
@@ -77,18 +77,24 @@ def elements_split(path, elements_name, elements_num, sv_path):
     elements_num: tuple
         需提取的要素值
     sv_path: Path
-        结果的保存路径
+        结果的保存路径, 如果未指定，将默认保存在../split
     """
+    if sv_path is None:
+        sv_path = path.parent / 'split'
+    sv_path.mkdir(exist_ok=True)
+
     for fileName in path.iterdir():
         image = np.array(Image.open(fileName), np.uint8)
         for element_index, element_name in enumerate(elements_name):
             res_image = np.zeros_like(image, np.uint8)
             res_image[image == elements_num[element_index]] = 1
-            utils.lblsave(sv_path / element_name / fileName.name, res_image)
+            element_path = sv_path / element_name
+            element_path.mkdir(exist_ok=True)
+            utils.lblsave(element_path / fileName.name, res_image)
             print("Element:{} saved in {}".format(element_name, sv_path / element_name / fileName.name))
 
 
-def elements_merge(path, elements_name, elements_num, sv_path):
+def elements_merge(path, elements_name, elements_num, sv_path=None):
     """
     将多个要素合并起来并保存为标签结果
     Parameters
@@ -100,8 +106,12 @@ def elements_merge(path, elements_name, elements_num, sv_path):
     elements_num: tuple
         需提取的要素值
     sv_path: Path
-        结果路径
+        结果路径, 如果未指定，将默认保存在../merge
     """
+    if sv_path is None:
+        sv_path = path.parent / 'merge'
+    sv_path.mkdir(exist_ok=True)
+
     for file_name in (path / elements_name[0]).iterdir():
         temp_image = np.array(Image.open(file_name), np.uint8)  # 第一个要素的掩模图
         res_image = np.zeros_like(temp_image, np.uint8)
@@ -118,7 +128,7 @@ def elements_merge(path, elements_name, elements_num, sv_path):
         print("Saved Segmentation data {} in {}".format(file_name.name, sv_path / file_name.name))
 
 
-def element_adjust(path, sv_path):
+def element_adjust(path, sv_path=None):
     """
     对要素进行调整，去除边界毛糙部分和小区域
     parameters
@@ -128,6 +138,10 @@ def element_adjust(path, sv_path):
     sv_path: Path
 
     """
+    if sv_path is None:
+        sv_path = path.parent / 'adjust'
+    sv_path.mkdir(exist_ok=True)
+
     for _, fileName in enumerate(path.iterdir()):
         name = fileName.name
         print(name)
