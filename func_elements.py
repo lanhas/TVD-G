@@ -1,11 +1,14 @@
 import json
 import base64
+import time
+import pandas as pd
 import numpy as np
 from PIL import Image
 from pathlib import Path
 from func_pillow import *
 from labelme import utils
 from skimage import measure
+import matplotlib.pyplot as plt
 '''
 此处生成的标签图是8位彩色图，每个像素点的值就是这个像素点所属的种类
 '''
@@ -59,6 +62,8 @@ def json2dataset(json_path, result_path, classes):
                 index_json = label_names.index(name)
                 index_all = classes.index(name)
                 new = new + index_all*(np.array(lbl) == index_json)
+            # temp
+            new[new==0] = 2
 
             utils.lblsave(str(result_path / (fileName.stem + ".png")), new)
             print("Saved " + str(fileName).split('.')[0] + ".png")
@@ -298,10 +303,137 @@ def road_extract(path):
         print("error!")
 
 
+def contour_line(path, sv_path):
+    if sv_path is None:
+        sv_path = path.parent / 'contourLine'
+    sv_path.mkdir(exist_ok=True)
+
+    for fileName in path.iterdir():
+        image = Image.open(fileName)
+        image = np.array(image)
+        X = np.arange(0, image.shape[0])
+        Y = np.arange(0, image.shape[1])
+        fig = plt.figure(figsize=(9, 9))
+        ax = fig.add_subplot(1, 1, 1)
+
+        ctf = plt.contourf(X, Y, image, 25)
+        plt.contour(X, Y, image, 25)
+        # plt.colorbar(ctf)  # 添加cbar
+        plt.axis('off')
+        extent = ax.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+        sv_name = sv_path / (fileName.stem + '.png')
+        plt.savefig(sv_name, bbox_inches=extent)
+
+
+def extract_qdn(path, sv_path):
+    if sv_path is None:
+        sv_path = path.parent / 'split_'
+    sv_path.mkdir(exist_ok=True)
+
+    dir_names = ['remote', 'dem', 'DEMImages']
+    dir_suffx = ['_remote.tif', '_dem.tif', '_demi.jpg']
+
+    df_village = pd.read_excel(r'F:\Dataset\traditional village_QDN\villages_info.xlsx')
+    village_names = df_village['编号']
+
+    for index, dir_name in enumerate(dir_names):
+        for village_name in list(village_names):
+            oriPath = path / dir_name / (village_name + dir_suffx[index])
+            newPath = sv_path / dir_name / (village_name + dir_suffx[index])
+            if not newPath.exists():
+                newPath.write_bytes(oriPath.read_bytes())
+                print("image {} has been copyed to target folder".format(village_name))
+
+
+def combine_village(co_path, vl_path, sv_path):
+    if sv_path is None:
+        sv_path = co_path.parent / 'topoMap'
+    sv_path.mkdir(exist_ok=True)
+
+    for co_fileName in co_path.iterdir():
+        vl_fileName = vl_path / (co_fileName.stem[:-4] + '_village.png')
+        sv_fileName = sv_path / (co_fileName.stem[:-4] + '_topo.png')
+
+        img_co = Image.open(co_fileName).resize((1024, 1024))
+        img_vl = Image.open(vl_fileName).resize((1024, 1024))
+        image = image_blend(np.array(img_co), np.array(img_vl), 0.7, 1, 0)
+        image = Image.fromarray(image)
+        image.save(sv_fileName)
+
+
+def concat_vl(re_path, to_path, sv_path, axis=0):
+    if sv_path is None:
+        sv_path = re_path.parent / 'topoMap_concat'
+    sv_path.mkdir(exist_ok=True)
+    for re_fileName in re_path.iterdir():
+        to_fileName = to_path / (re_fileName.stem[:-7] + '_topo.png')
+        sv_fileName = sv_path / (re_fileName.stem[:-7] + '_concat.png')
+        image_re, image_to = Image.open(re_fileName), Image.open(to_fileName).resize((2560, 2560))
+        size_re, size_to = image_re.size, image_to.size
+
+        if axis == 0:
+            joint = Image.new("RGB", (size_re[0] + size_to[0], size_re[1]))
+            loc_re, loc_to = (0, 0), (size_re[0], 0)
+        else:
+            joint = Image.new("RGB", (size_re[0], size_to[1] + size_re[1]))
+            loc_re, loc_to = (0, 0), (0, size_re[1])
+        joint.paste(image_re, loc_re)
+        joint.paste(image_to, loc_to)
+        joint.save(sv_fileName)
+
+
+
+def image_blend(image, areaMask, alpha, beta, gamma) -> Image:
+    """
+    将图片内的前背景按一定比例区分
+
+    Parameters
+    ----------
+    image: ndarray
+    areaMask: ndarray
+        区域掩膜
+    alpha: float
+        前景区的融合比例
+    beta: float
+        背景区的融合比例
+    gamma: 透明度
+
+    Return
+    ------
+    result: ndarray
+        融合后的结果
+    """
+    foreground = image
+    background = image.copy()
+    # 如果掩膜是单通道图像，先将其转为三通道
+    if len(areaMask.shape) == 2:
+        for i in range(3):
+            foreground[:, :, i][areaMask == 0] = 0
+            background[:, :, i][areaMask > 0] = 0
+    result = cv2.addWeighted(foreground, alpha, background, beta, gamma)
+    return result
+
+
 if __name__ == "__main__":
-    root_path = Path(r'F:\dataset\villageLand\data_2')
-    path = root_path / 'original' / 'dem'
-    sv_path = root_path / 'process' / 'elements' / 'bmp'
+    # root_path = Path(r'F:\Dataset\traditional villages_GZ')
+    # sv_path = Path(r'F:\Dataset\traditional village_QDN')
+    # extract_qdn(root_path, sv_path)
+
+    path_co = Path(r'F:\Dataset\traditional village_QDN\contourLine')
+    path_vl = Path(r'F:\Dataset\traditional village_QDN\villageMask')
+    sv_path = Path(r'F:\Dataset\traditional village_QDN\topoMap')
+
+    combine_village(path_co, path_vl, sv_path)
+    # img_c = Image.open(r'F:\Dataset\traditional village_QDN\contourLine\GZ1_024_ZC_dem.png').resize((1024, 1024))
+    # img_v = Image.open(r'F:\Dataset\traditional village_QDN\villageMask\GZ1_024_ZC_remote.png').resize((1024, 1024))
+    # image = image_blend(np.array(img_c), np.array(img_v), 0.7, 1, 0)
+    # image = Image.fromarray(image)
+    # image.show()
+
+
+
+    # classes = ["_background_", "wasteland", "forest", "farm", "water", "glass", "village"]
+    # json2dataset(root_path, sv_path, classes)
     # sv_path = root_path / 'process' / 'elements' / 'mountain'
     # get_contourline(path, sv_path)
     # path = Path.cwd() / "data/result"

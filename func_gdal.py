@@ -385,7 +385,9 @@ def coordinateTransform(data, stPoint, grad, mode='l2p'):
 
 
 if __name__ == "__main__":
-    ori_path = Path(r'F:\Dataset\villageLand\data_team\team2_data')    # root dir
+    ori_path = Path(r'F:\Dataset\village data\ori_SX')    # root dir
+    sv_path = Path(r'F:\Dataset\traditional_villages_SX')
+
     # clean_data(ori_path)
     # splited_path is Optional parameters
     # splited_path = Path(r'G:\dataset\temp_splited')

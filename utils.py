@@ -62,3 +62,11 @@ def tif2bmp(img: Image)->Image:
     dem_array = dem_array.astype(np.uint8)
     result = Image.fromarray(dem_array)
     return result
+
+
+# if __name__ == "__main__":
+#     from pathlib import Path
+#     path = Path(r'F:\Dataset\traditional villages_QDN\villageMask')
+#     for fileName in path.iterdir():
+#         new_path = fileName.parent / (fileName.stem[:-7] + '_village.png')
+#         fileName.rename(new_path)
